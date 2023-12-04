@@ -22,12 +22,14 @@ func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("user_login_id")
 		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
 			return
 		}
 
 		if _, ok := UserLogin[c.Value]; !ok || c.Value == "" {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(model.ErrorResponse{Error: "user login id not found"})
 			return
@@ -44,12 +46,14 @@ func AuthAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("user_login_role")
 		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
 			return
 		}
 
 		if c.Value != "admin" {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(model.ErrorResponse{Error: "user login role not Admin"})
 			return
@@ -322,6 +326,7 @@ func GetStudyProgram(w http.ResponseWriter, r *http.Request) {
 	// list study program
 	listStudy, err := GetStudyCode()
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
 			Error: err.Error(),
@@ -329,6 +334,7 @@ func GetStudyProgram(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(listStudy)
 }
@@ -338,12 +344,14 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	var user model.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	if user.ID == "" || user.Name == "" || user.StudyCode == "" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "ID, name, study code or role is empty"})
 		return
@@ -353,8 +361,20 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 
 	err = checkUserIDAndStudy(user)
 	if err != nil {
+		if strings.Contains(err.Error(), "internal server error") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(model.ErrorResponse{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
+		json.NewEncoder(w).Encode(model.ErrorResponse{
+			Error: err.Error(),
+		})
 		return
 	}
 
@@ -362,6 +382,7 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	userData = append(userData, user)
 
 	_ = saveUserData(userData)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(model.SuccessResponse{Username: user.ID, Message: "add user success"})
 
@@ -370,6 +391,7 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userData, err := GetUserData()
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
 			Error: err.Error(),
@@ -380,6 +402,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userId := r.URL.Query().Get("id")
 
 	if userId == "" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
 			Error: "user id is empty",
@@ -398,6 +421,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !found {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
 			Error: "user id not found",
@@ -406,6 +430,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = saveUserData(newUserData)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(model.SuccessResponse{
 		Username: userId,
