@@ -65,12 +65,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	if credential.ID == "" || credential.Name == "" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "ID or Name is empty"})
 		return
@@ -78,6 +80,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	userData, err := GetUserData()
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(model.ErrorResponse{Error: err.Error()})
 		return
@@ -98,12 +101,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 			UserLogin[user.ID] = user
 
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(model.SuccessResponse{Username: credential.Name, Message: "login success"})
 			return
 		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
 	json.NewEncoder(w).Encode(model.ErrorResponse{Error: "user not found"})
 
@@ -113,7 +118,7 @@ func GetStudyCode() ([]model.StudyData, error) {
 
 	file, err := os.Open(filepath.Join("data", "list-study.txt"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("internal server error : %w", err)
 	}
 
 	defer file.Close()
@@ -135,9 +140,19 @@ func GetStudyCode() ([]model.StudyData, error) {
 }
 
 func GetUserData() ([]model.User, error) {
+	_, err := os.Stat(filepath.Join("data", "users.txt"))
+	if os.IsNotExist(err) {
+		f, err := os.Create(filepath.Join("data", "users.txt"))
+		if err != nil {
+			return nil, fmt.Errorf("internal server error : %w", err)
+		}
+		f.Close()
+		return []model.User{}, nil
+	}
+
 	f, err := os.Open(filepath.Join("data", "users.txt"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("internal server error : %w", err)
 	}
 
 	defer f.Close()
@@ -216,6 +231,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	err := checkUserIDAndStudy(user)
 	if err != nil {
+		if strings.Contains(err.Error(), "internal server error") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(model.ErrorResponse{
+				Error: err.Error(),
+			})
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
@@ -229,16 +253,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(model.ErrorResponse{
 			Error: "role must be admin or user",
-		})
-		return
-	}
-
-	err = checkUserIDAndStudy(user)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(model.ErrorResponse{
-			Error: err.Error(),
 		})
 		return
 	}
@@ -259,7 +273,7 @@ func saveUserData(data []model.User) error {
 
 	f, err := os.Create(filepath.Join("data", "users.txt"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer f.Close()
 
