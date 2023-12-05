@@ -17,7 +17,6 @@ import (
 
 var UserLogin = make(map[string]model.User)
 
-// DESC: func Auth is a middleware to check user login id, only user that already login can pass this middleware
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("user_login_id")
@@ -60,7 +59,7 @@ func AuthAdmin(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
-	}) // TODO: replace this
+	})
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -319,11 +318,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		Message:  "logout success",
 	})
 
-	// TODO: answer here
 }
 
 func GetStudyProgram(w http.ResponseWriter, r *http.Request) {
-	// list study program
 	listStudy, err := GetStudyCode()
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -438,7 +435,6 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DESC: Gunakan variable ini sebagai goroutine di handler GetWeather
 var GetWetherByRegionAPI = client.GetWeatherByRegion
 
 func GetWeather(w http.ResponseWriter, r *http.Request) {
