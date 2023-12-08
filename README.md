@@ -1,4 +1,4 @@
-# API-STUDENT-PORTAL-POSTGRES
+# API-student-portal-textfile
 
 Ini adalah API Student Portal, pada API ini memiliki endpoint seperti register, login, logout, get study program, add user, delete user, get weather. API ini data usernya disimpan dalam sebuah file yang berformat .txt
 
